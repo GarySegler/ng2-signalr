@@ -21,27 +21,8 @@ ng cli example: [ng cli example](https://github.com/HNeukermans/ng2-signalr.demo
 npm install ng2-signalr jquery signalr --save
 ```
 
-## Breaking changes
-v2.0.6
-going from <2.0.6 to 2.0.6
-ConnectionStatus refactoring
-  1. removed ConnectionStatus.starting
-  2. removed ConnectionStatus.received
-  3. removed ConnectionStatus.connectionSlow
-  4. removed ConnectionStatus.reconnected
-  5. removed ConnectionStatus.stateChanged
-
-
-v2.0.0
-going from 1.0.X to 2.0.0 there will be some breaking changes. 
-
-type renames:
-  1. ConnectionOptions to IConnectionOptions
-  2. ListenerCollection to IListenerCollection 
-  3. SignalRConnectionBase to ISignalRConnection
-  
-configuration: <br>
-  4. SignalRModule.configure(c: SingalRConfiguration) to SignalR.forRoot(() => SingalRConfiguration);
+> v5 is first version developed against angular v5. 
+> angular v4 users should use v2.2.1.
 
 ## Setup
 inside app.module.ts
@@ -49,13 +30,18 @@ inside app.module.ts
 import { SignalRModule } from 'ng2-signalr';
 import { SignalRConfiguration } from 'ng2-signalr';
 
-// v2.0.0
+// >= v2.0.0
 export function createConfig(): SignalRConfiguration {
   const c = new SignalRConfiguration();
   c.hubName = 'Ng2SignalRHub';
   c.qs = { user: 'donald' };
   c.url = 'http://ng2-signalr-backend.azurewebsites.net/';
   c.logging = true;
+  
+  // >= v5.0.0
+  c.executeEventsInZone = true; // optional, default is true
+  c.executeErrorsInZone = false; // optional, default is false
+  c.executeStatusChangeInZone = true; // optional, default is true
   return c;
 }
 
@@ -229,6 +215,13 @@ onMessageSent$.subscribe((chatMessage: ChatMessage) => {
 let onMessageSent$  = this.connection.listenFor('ON_MESSAGE_SENT');
 onMessageSent$.subscribe( ...
 ```
+### listenForRaw:
+ When using listenForRaw method, you can cast original data form signalr client callback. Here the listen method returns you the any[] of BroadvastEventListener, that you can then subscribe to.
+ ```
+ let onMessageSent$  = this.connection.listenForRaw('ON_MESSAGE_SENT');
+ onMessageSent$.subscribe((data: any[]) => ....);
+ ```
+
 ## How to invoke a server method
 ```
 // invoke a server side method
@@ -290,7 +283,27 @@ it('I want to simulate several ChatMessages received, in my unit test',
 ```
 For more info, certainly check out the live demo, unit testing section.
 
+## Breaking changes
+v2.0.6
+going from <2.0.6 to 2.0.6
+ConnectionStatus refactoring
+  1. removed ConnectionStatus.starting
+  2. removed ConnectionStatus.received
+  3. removed ConnectionStatus.connectionSlow
+  4. removed ConnectionStatus.reconnected
+  5. removed ConnectionStatus.stateChanged
 
+
+v2.0.0
+going from 1.0.X to 2.0.0 there will be some breaking changes. 
+
+type renames:
+  1. ConnectionOptions to IConnectionOptions
+  2. ListenerCollection to IListenerCollection 
+  3. SignalRConnectionBase to ISignalRConnection
+  
+configuration: <br>
+  4. SignalRModule.configure(c: SingalRConfiguration) to SignalR.forRoot(() => SingalRConfiguration);
 
 ## Detailed webpack install
 ```

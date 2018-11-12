@@ -1,11 +1,12 @@
 import { ISignalRConnection } from './connection/i.signalr.connection';
 import { SignalRConfiguration } from './signalr.configuration';
 import { SignalRConnection } from './connection/signalr.connection';
-import { NgZone, Injectable } from '@angular/core';
+import { NgZone, Injectable, Inject } from '@angular/core';
 import { IConnectionOptions } from './connection/connection.options';
 import { ConnectionTransport } from './connection/connection.transport';
-import { Observable } from 'rxjs/Observable';
+import { Observable } from 'rxjs';
 import { ConnectionStatus } from './connection/connection.status';
+import { SIGNALR_JCONNECTION_TOKEN } from "./signalr.module";
 
 declare var jQuery: any;
 
@@ -15,21 +16,44 @@ export class SignalR {
     private _zone: NgZone;
     private _jHubConnectionFn: any;
 
-    public constructor(configuration: SignalRConfiguration, zone: NgZone, jHubConnectionFn: Function) {
+    public constructor(
+        configuration: SignalRConfiguration,
+        zone: NgZone,
+        @Inject(SIGNALR_JCONNECTION_TOKEN) jHubConnectionFn: any /* use type 'any'; Suggested workaround from angular repository: https://github.com/angular/angular/issues/12631 */
+    ) {
         this._configuration = configuration;
         this._zone = zone;
         this._jHubConnectionFn = jHubConnectionFn;
     }
 
     public createConnection(options?: IConnectionOptions): SignalRConnection {
-        let status: Observable<ConnectionStatus>;
-        let configuration = this.merge(options ? options : {});
-       
+        const configuration = this.merge(options ? options : {});
+
+        this.logConfiguration(configuration);
+
+        // create connection object
+        const jConnection = this._jHubConnectionFn(configuration.url);
+        jConnection.logging = configuration.logging;
+        jConnection.qs = configuration.qs;
+
+        // create a proxy
+        const jProxy = jConnection.createHubProxy(configuration.hubName);
+        // !!! important. We need to register at least one function otherwise server callbacks will not work.
+        jProxy.on('noOp', () => { /* */ });
+
+        const hubConnection = new SignalRConnection(jConnection, jProxy, this._zone, configuration);
+
+        return hubConnection;
+    }
+
+    public connect(options?: IConnectionOptions): Promise<ISignalRConnection> {
+        return this.createConnection(options).start();
+    }
+
+    private logConfiguration(configuration: SignalRConfiguration) {
         try {
-
-            let serializedQs = JSON.stringify(configuration.qs);
-            let serializedTransport = JSON.stringify(configuration.transport);
-
+            const serializedQs = JSON.stringify(configuration.qs);
+            const serializedTransport = JSON.stringify(configuration.transport);
             if (configuration.logging) {
                 console.log(`Creating connecting with...`);
                 console.log(`configuration:[url: '${configuration.url}'] ...`);
@@ -37,31 +61,11 @@ export class SignalR {
                 console.log(`configuration:[qs: '${serializedQs}'] ...`);
                 console.log(`configuration:[transport: '${serializedTransport}'] ...`);
             }
-        } catch (err) {}
-
-        // create connection object
-        let jConnection = this._jHubConnectionFn(configuration.url);
-        jConnection.logging = configuration.logging;
-        jConnection.qs = configuration.qs;
-
-        // create a proxy
-        let jProxy = jConnection.createHubProxy(configuration.hubName);
-        // !!! important. We need to register at least one function otherwise server callbacks will not work.
-        jProxy.on('noOp', function () { });
-
-        let hubConnection = new SignalRConnection(jConnection, jProxy, this._zone, configuration);
-
-        return hubConnection;
-    }
-
-
-    public connect(options?: IConnectionOptions): Promise<ISignalRConnection> {
-
-        return this.createConnection(options).start();
+        } catch (err) { /* */ }
     }
 
     private merge(overrides: IConnectionOptions): SignalRConfiguration {
-        let merged: SignalRConfiguration = new SignalRConfiguration();
+        const merged: SignalRConfiguration = new SignalRConfiguration();
         merged.hubName = overrides.hubName || this._configuration.hubName;
         merged.url = overrides.url || this._configuration.url;
         merged.qs = overrides.qs || this._configuration.qs;
@@ -69,6 +73,10 @@ export class SignalR {
         merged.jsonp = overrides.jsonp || this._configuration.jsonp;
         merged.withCredentials = overrides.withCredentials || this._configuration.withCredentials;
         merged.transport = overrides.transport || this._configuration.transport;
+        merged.executeEventsInZone = overrides.executeEventsInZone || this._configuration.executeEventsInZone;
+        merged.executeErrorsInZone = overrides.executeErrorsInZone || this._configuration.executeErrorsInZone;
+        merged.executeStatusChangeInZone = overrides.executeStatusChangeInZone || this._configuration.executeStatusChangeInZone;
+        merged.pingInterval = overrides.pingInterval || this._configuration.pingInterval;
         return merged;
     }
 

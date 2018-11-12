@@ -1,19 +1,19 @@
-import { NgModule, ModuleWithProviders, NgZone, OpaqueToken } from '@angular/core';
+import { NgModule, ModuleWithProviders, NgZone, InjectionToken } from '@angular/core';
 import { SignalR } from '../services/signalr';
 import { SignalRConfiguration } from '../services/signalr.configuration';
 
-const SIGNALR_CONFIGURATION = new OpaqueToken('SIGNALR_CONFIGURATION');
+const SIGNALR_CONFIGURATION = new InjectionToken<SignalRConfiguration>('SIGNALR_CONFIGURATION');
 
 export function createSignalr(configuration: SignalRConfiguration, zone: NgZone) {
 
-    let jConnectionFn = getJConnectionFn();
+    const jConnectionFn = getJConnectionFn();
 
     return new SignalR(configuration, zone, jConnectionFn);
 }
 
 function getJConnectionFn(): any {
-    let jQuery = getJquery();
-    let hubConnectionFn = (<any> window).jQuery.hubConnection;
+    const jQuery = getJquery();
+    const hubConnectionFn = (window as any).jQuery.hubConnection;
     if (hubConnectionFn == null) {
         throw new Error('Signalr failed to initialize. Script \'jquery.signalR.js\' is missing. Please make sure to include \'jquery.signalR.js\' script.');
     }
@@ -21,21 +21,21 @@ function getJConnectionFn(): any {
 }
 
 function getJquery(): any {
-        let jQuery = (<any> window).jQuery;
-        if (jQuery == null) {
-            throw new Error('Signalr failed to initialize. Script \'jquery.js\' is missing. Please make sure to include jquery script.');
-        }
-        return jQuery;
+    const jQuery = (window as any).jQuery;
+    if (jQuery == null) {
+        throw new Error('Signalr failed to initialize. Script \'jquery.js\' is missing. Please make sure to include jquery script.');
+    }
+    return jQuery;
 }
 
 @NgModule({
     providers: [{
-                    provide: SignalR,
-                    useValue: SignalR
-                }]
+        provide: SignalR,
+        useValue: SignalR
+    }]
 })
 export class SignalRModule {
-    public static forRoot(getSignalRConfiguration: Function): ModuleWithProviders {
+    public static forRoot(getSignalRConfiguration: () => void): ModuleWithProviders {
         return {
             ngModule: SignalRModule,
             providers: [

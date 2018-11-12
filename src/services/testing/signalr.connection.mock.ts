@@ -1,9 +1,6 @@
-import { Observable } from 'rxjs/Observable';
-import { AsyncSubject } from 'rxjs/AsyncSubject';
-import { ReplaySubject } from 'rxjs/ReplaySubject';
+import { Observable, AsyncSubject, ReplaySubject, Subject } from 'rxjs';
 import { SignalRConfiguration } from '../signalr.configuration';
 import { BroadcastEventListener } from '../eventing/broadcast.event.listener';
-import { Subject } from 'rxjs/Subject';
 import { ConnectionStatus } from '../connection/connection.status';
 import { ISignalRConnection } from '../connection/i.signalr.connection';
 
@@ -23,7 +20,7 @@ export class SignalRConnectionMock implements ISignalRConnection {
     }
 
     get status(): Observable<ConnectionStatus> {
-        return this._mockStatus$;
+        return this._mockStatus$.asObservable();
     }
 
     get id(): string {
@@ -31,9 +28,10 @@ export class SignalRConnectionMock implements ISignalRConnection {
     }
 
     public stop(): void {
+        //
     }
 
-   public start(): Promise<any> {
+    public start(): Promise<any> {
         return Promise.resolve(null); // TODO: implement
     }
 
@@ -46,10 +44,14 @@ export class SignalRConnectionMock implements ISignalRConnection {
     }
 
     public listenFor<T>(event: string): BroadcastEventListener<T> {
-        let listener = new BroadcastEventListener<T>(event);
+        const listener = new BroadcastEventListener<T>(event);
         this.listen(listener);
         return listener;
     }
+
+    public listenForRaw(event: string): BroadcastEventListener<any[]> {
+        const listener = new BroadcastEventListener<any[]>(event);
+        this._listeners[listener.event] = listener;
+        return listener;
+    }
 }
-
-
